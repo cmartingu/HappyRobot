@@ -1,13 +1,15 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from geopy.distance import geodesic
 import json
+import random
 
 app = FastAPI()
 
 # CORS (por si lo llamas desde otra plataforma)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # puedes restringir esto si es necesario
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -17,9 +19,60 @@ app.add_middleware(
 with open("loads.json", "r") as f:
     loads = json.load(f)
 
+# Coordenadas base para cálculo de distancia
+city_coordinates = {
+    "Atlanta, GA": (33.7490, -84.3880),
+    "Miami, FL": (25.7617, -80.1918),
+    "Dallas, TX": (32.7767, -96.7970),
+    "Phoenix, AZ": (33.4484, -112.0740),
+    "Chicago, IL": (41.8781, -87.6298),
+    "New York, NY": (40.7128, -74.0060),
+    "Los Angeles, CA": (34.0522, -118.2437),
+    "Denver, CO": (39.7392, -104.9903),
+    "Houston, TX": (29.7604, -95.3698),
+    "Seattle, WA": (47.6062, -122.3321),
+    "San Francisco, CA": (37.7749, -122.4194),
+    "Orlando, FL": (28.5383, -81.3792),
+    "Charlotte, NC": (35.2271, -80.8431),
+    "Las Vegas, NV": (36.1699, -115.1398),
+    "LANDISVILLE, PA": (40.0948, -76.4144)  # Agregado
+}
+
+# Endpoint original (aleatorio)
 @app.get("/search_loads")
 def search_loads(equipment_type: str = Query(None)):
-    for load in loads:
-        if not equipment_type or load["equipment_type"].lower() == equipment_type.lower():
-            return load
+    filtered = [load for load in loads if not equipment_type or load["equipment_type"].lower() == equipment_type.lower()]
+    if filtered:
+        return random.choice(filtered)
     return {"message": "No load found"}
+
+# Endpoint basado en ciudad física del carrier
+@app.get("/search_loads/{phy_city}")
+def search_load_by_location(phy_city: str, equipment_type: str = Query(None)):
+    city_upper = phy_city.strip().upper()
+    matched_city = None
+
+    # Buscar city case-insensitive exacta en el diccionario
+    for city in city_coordinates:
+        if city_upper in city.upper():
+            matched_city = city
+            break
+
+    if not matched_city:
+        return {"error": f"City '{phy_city}' not recognized. Add it to city_coordinates."}
+
+    origin_coord = city_coordinates[matched_city]
+
+    # Filtrar cargas por tipo de equipo si aplica
+    filtered = [load for load in loads if not equipment_type or load["equipment_type"].lower() == equipment_type.lower()]
+
+    if not filtered:
+        return {"message": "No loads found with given criteria."}
+
+    # Buscar carga con origen más cercano a phy_city
+    closest_load = min(
+        filtered,
+        key=lambda load: geodesic(origin_coord, city_coordinates.get(load["origin"], (0, 0))).miles
+    )
+
+    return closest_load
