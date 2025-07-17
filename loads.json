@@ -1,0 +1,22 @@
+[
+  {
+    "load_id": "L001",
+    "origin": "Atlanta, GA",
+    "destination": "Miami, FL",
+    "pickup_datetime": "2025-07-18T10:00:00",
+    "delivery_datetime": "2025-07-19T18:00:00",
+    "equipment_type": "Dry Van",
+    "loadboard_rate": 1200,
+    "notes": "Urgent delivery"
+  },
+  {
+    "load_id": "L002",
+    "origin": "Dallas, TX",
+    "destination": "Phoenix, AZ",
+    "pickup_datetime": "2025-07-19T08:00:00",
+    "delivery_datetime": "2025-07-20T15:00:00",
+    "equipment_type": "Reefer",
+    "loadboard_rate": 1450,
+    "notes": ""
+  }
+]
