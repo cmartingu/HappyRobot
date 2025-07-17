@@ -6,7 +6,7 @@ import random
 
 app = FastAPI()
 
-# CORS (por si lo llamas desde otra plataforma)
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,11 +15,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Carga los datos de cargas
+# Cargar datos de loads
 with open("loads.json", "r") as f:
     loads = json.load(f)
 
-# Coordenadas base para cálculo de distancia
+# Coordenadas de ciudades conocidas
 city_coordinates = {
     "Atlanta, GA": (33.7490, -84.3880),
     "Miami, FL": (25.7617, -80.1918),
@@ -35,10 +35,9 @@ city_coordinates = {
     "Orlando, FL": (28.5383, -81.3792),
     "Charlotte, NC": (35.2271, -80.8431),
     "Las Vegas, NV": (36.1699, -115.1398),
-    "LANDISVILLE, PA": (40.0948, -76.4144)  # Agregado
+    "LANDISVILLE, PA": (40.0948, -76.4144)
 }
 
-# Endpoint original (aleatorio)
 @app.get("/search_loads")
 def search_loads(equipment_type: str = Query(None)):
     filtered = [load for load in loads if not equipment_type or load["equipment_type"].lower() == equipment_type.lower()]
@@ -46,30 +45,26 @@ def search_loads(equipment_type: str = Query(None)):
         return random.choice(filtered)
     return {"message": "No load found"}
 
-# Endpoint basado en ciudad física del carrier
 @app.get("/search_loads/{phy_city}")
 def search_load_by_location(phy_city: str, equipment_type: str = Query(None)):
     city_upper = phy_city.strip().upper()
     matched_city = None
 
-    # Buscar city case-insensitive exacta en el diccionario
     for city in city_coordinates:
         if city_upper in city.upper():
             matched_city = city
             break
 
-    if not matched_city:
-        return {"error": f"City '{phy_city}' not recognized. Add it to city_coordinates."}
-
-    origin_coord = city_coordinates[matched_city]
-
-    # Filtrar cargas por tipo de equipo si aplica
+    # Si no se encuentra ciudad → fallback a aleatorio
     filtered = [load for load in loads if not equipment_type or load["equipment_type"].lower() == equipment_type.lower()]
-
     if not filtered:
         return {"message": "No loads found with given criteria."}
 
-    # Buscar carga con origen más cercano a phy_city
+    if not matched_city:
+        return random.choice(filtered)
+
+    origin_coord = city_coordinates[matched_city]
+
     closest_load = min(
         filtered,
         key=lambda load: geodesic(origin_coord, city_coordinates.get(load["origin"], (0, 0))).miles
