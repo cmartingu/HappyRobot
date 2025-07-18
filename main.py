@@ -1,8 +1,10 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from geopy.distance import geodesic
 import json
 import random
+import os
+from datetime import datetime
 
 app = FastAPI()
 
@@ -15,11 +17,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Cargar datos de loads
+# Load loads
 with open("loads.json", "r") as f:
     loads = json.load(f)
 
-# Coordenadas de ciudades conocidas
 city_coordinates = {
     "Atlanta, GA": (33.7490, -84.3880),
     "Miami, FL": (25.7617, -80.1918),
@@ -55,7 +56,6 @@ def search_load_by_location(phy_city: str, equipment_type: str = Query(None)):
             matched_city = city
             break
 
-    # Si no se encuentra ciudad → fallback a aleatorio
     filtered = [load for load in loads if not equipment_type or load["equipment_type"].lower() == equipment_type.lower()]
     if not filtered:
         return {"message": "No loads found with given criteria."}
@@ -71,3 +71,26 @@ def search_load_by_location(phy_city: str, equipment_type: str = Query(None)):
     )
 
     return closest_load
+
+@app.post("/log_result")
+async def log_result(request: Request):
+    data = await request.json()
+
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "data": data
+    }
+
+    log_path = "call_logs.json"
+    if os.path.exists(log_path):
+        with open(log_path, "r") as f:
+            logs = json.load(f)
+    else:
+        logs = []
+
+    logs.append(log_entry)
+
+    with open(log_path, "w") as f:
+        json.dump(logs, f, indent=2)
+
+    return {"message": "Log saved successfully"}
