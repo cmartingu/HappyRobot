@@ -3,4 +3,5 @@ uvicorn
 python-dotenv
 geopy
 google-api-python-client
+gspread
 google-auth

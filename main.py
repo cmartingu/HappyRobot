@@ -5,11 +5,12 @@ import json
 import random
 import os
 from datetime import datetime
-from sheets_logger import append_to_sheet
+
+import gspread
+from google.oauth2 import service_account
 
 app = FastAPI()
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -18,7 +19,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load loads
 with open("loads.json", "r") as f:
     loads = json.load(f)
 
@@ -76,8 +76,26 @@ def search_load_by_location(phy_city: str, equipment_type: str = Query(None)):
 @app.post("/log_result")
 async def log_result(request: Request):
     data = await request.json()
-    try:
-        append_to_sheet(data)
-        return {"message": "Saved to Google Sheets"}
-    except Exception as e:
-        return {"error": str(e)}
+
+    # Inicializar Google Sheets API
+    creds_info = json.loads(os.getenv("GOOGLE_CREDS_JSON"))
+    spreadsheet_id = os.getenv("SPREADSHEET_ID")
+
+    creds = service_account.Credentials.from_service_account_info(
+        creds_info,
+        scopes=["https://www.googleapis.com/auth/spreadsheets"]
+    )
+    client = gspread.authorize(creds)
+
+    sheet = client.open_by_key(spreadsheet_id).sheet1
+
+    # Preparar los datos a guardar
+    row = [
+        datetime.utcnow().isoformat(),
+        json.dumps(data)
+    ]
+
+    # Insertar en la hoja
+    sheet.append_row(row, value_input_option="RAW")
+
+    return {"message": "Log saved to Google Sheets"}
