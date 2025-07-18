@@ -2,3 +2,5 @@ fastapi
 uvicorn
 python-dotenv
 geopy
+google-api-python-client
+google-auth

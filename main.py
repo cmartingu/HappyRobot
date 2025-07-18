@@ -5,6 +5,7 @@ import json
 import random
 import os
 from datetime import datetime
+from sheets_logger import append_to_sheet
 
 app = FastAPI()
 
@@ -75,22 +76,8 @@ def search_load_by_location(phy_city: str, equipment_type: str = Query(None)):
 @app.post("/log_result")
 async def log_result(request: Request):
     data = await request.json()
-
-    log_entry = {
-        "timestamp": datetime.utcnow().isoformat(),
-        "data": data
-    }
-
-    log_path = "call_logs.json"
-    if os.path.exists(log_path):
-        with open(log_path, "r") as f:
-            logs = json.load(f)
-    else:
-        logs = []
-
-    logs.append(log_entry)
-
-    with open(log_path, "w") as f:
-        json.dump(logs, f, indent=2)
-
-    return {"message": "Log saved successfully"}
+    try:
+        append_to_sheet(data)
+        return {"message": "Saved to Google Sheets"}
+    except Exception as e:
+        return {"error": str(e)}
