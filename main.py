@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, Query, Request, Header, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from geopy.distance import geodesic
 import json
@@ -11,9 +11,9 @@ from google.oauth2 import service_account
 from dotenv import load_dotenv
 load_dotenv()
 
-
 app = FastAPI()
 
+# Middleware CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,9 +22,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Cargar loads
 with open("loads.json", "r") as f:
     loads = json.load(f)
 
+# Coordenadas de referencia
 city_coordinates = {
     "Atlanta, GA": (33.7490, -84.3880),
     "Miami, FL": (25.7617, -80.1918),
@@ -43,15 +45,26 @@ city_coordinates = {
     "LANDISVILLE, PA": (40.0948, -76.4144)
 }
 
+# --- Autenticación por API Key ---
+API_KEY = os.getenv("API_KEY")
+
+def verify_api_key(x_api_key: str = Header(...)):
+    if x_api_key != API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API Key"
+        )
+
+# --- Endpoints protegidos ---
 @app.get("/search_loads")
-def search_loads(equipment_type: str = Query(None)):
+def search_loads(equipment_type: str = Query(None), auth=Depends(verify_api_key)):
     filtered = [load for load in loads if not equipment_type or load["equipment_type"].lower() == equipment_type.lower()]
     if filtered:
         return random.choice(filtered)
     return {"message": "No load found"}
 
 @app.get("/search_loads/{phy_city}")
-def search_load_by_location(phy_city: str, equipment_type: str = Query(None)):
+def search_load_by_location(phy_city: str, equipment_type: str = Query(None), auth=Depends(verify_api_key)):
     city_upper = phy_city.strip().upper()
     matched_city = None
 
@@ -77,10 +90,9 @@ def search_load_by_location(phy_city: str, equipment_type: str = Query(None)):
     return closest_load
 
 @app.post("/log_result")
-async def log_result(request: Request):
+async def log_result(request: Request, auth=Depends(verify_api_key)):
     data = await request.json()
 
-    # Inicializar Google Sheets API
     creds_info = json.loads(os.getenv("GOOGLE_CREDS_JSON"))
     spreadsheet_id = os.getenv("SPREADSHEET_ID")
 
@@ -91,7 +103,6 @@ async def log_result(request: Request):
     client = gspread.authorize(creds)
     sheet = client.open_by_key(spreadsheet_id).sheet1
 
-    # Extraer los campos individualmente
     timestamp = datetime.utcnow().isoformat()
     carrier_name = data.get("carrier_name", "")
     agreed_price = data.get("agreed_rate", "")
@@ -99,7 +110,6 @@ async def log_result(request: Request):
     sentiment = data.get("sentiment", "")
     outcome = data.get("outcome", "")
 
-    # Insertar en la hoja
     row = [timestamp, carrier_name, agreed_price, load_id, sentiment, outcome]
     sheet.append_row(row, value_input_option="RAW")
 
