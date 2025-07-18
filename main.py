@@ -105,13 +105,13 @@ async def log_result(request: Request, auth=Depends(verify_api_key)):
 
     timestamp = datetime.utcnow().isoformat()
     carrier_name = data.get("carrier_name", "")
-    agreed_price = data.get("agreed_rate", "")
+    agreed_price = float(data.get("agreed_rate", 0) or 0)
     load_id = data.get("load_id", "")
     outcome = data.get("outcome", "")
     sentiment = data.get("sentiment", "")
-    nbr_negotiation_rounds = data.get("neg_rounds", "")
-    call_duration_s = data.get("call_duration", "")
-    initial_price = data.get("initial_rate", "")
+    nbr_negotiation_rounds = int(data.get("neg_rounds", 0) or 0)
+    call_duration_s = float(data.get("call_duration", 0) or 0)
+    initial_price = float(data.get("initial_rate", 0) or 0)
 
     row = [timestamp, carrier_name, agreed_price, load_id, sentiment, outcome, nbr_negotiation_rounds, call_duration_s, initial_price]
     sheet.append_row(row, value_input_option="RAW")
