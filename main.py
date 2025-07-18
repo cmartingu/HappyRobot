@@ -8,6 +8,9 @@ from datetime import datetime
 
 import gspread
 from google.oauth2 import service_account
+from dotenv import load_dotenv
+load_dotenv()
+
 
 app = FastAPI()
 
@@ -86,16 +89,18 @@ async def log_result(request: Request):
         scopes=["https://www.googleapis.com/auth/spreadsheets"]
     )
     client = gspread.authorize(creds)
-
     sheet = client.open_by_key(spreadsheet_id).sheet1
 
-    # Preparar los datos a guardar
-    row = [
-        datetime.utcnow().isoformat(),
-        json.dumps(data)
-    ]
+    # Extraer los campos individualmente
+    timestamp = datetime.utcnow().isoformat()
+    carrier_name = data.get("carrier_name", "")
+    agreed_price = data.get("agreed_rate", "")
+    load_id = data.get("load_id", "")
+    sentiment = data.get("sentiment", "")
+    outcome = data.get("outcome", "")
 
     # Insertar en la hoja
+    row = [timestamp, carrier_name, agreed_price, load_id, sentiment, outcome]
     sheet.append_row(row, value_input_option="RAW")
 
     return {"message": "Log saved to Google Sheets"}
