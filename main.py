@@ -110,8 +110,10 @@ async def log_result(request: Request, auth=Depends(verify_api_key)):
     outcome = data.get("outcome", "")
     sentiment = data.get("sentiment", "")
     nbr_negotiation_rounds = data.get("neg_rounds", "")
+    call_duration_s = data.get("call_duration", "")
+    initial_price = data.get("initial_rate", "")
 
-    row = [timestamp, carrier_name, agreed_price, load_id, sentiment, outcome, nbr_negotiation_rounds]
+    row = [timestamp, carrier_name, agreed_price, load_id, sentiment, outcome, nbr_negotiation_rounds, call_duration_s, initial_price]
     sheet.append_row(row, value_input_option="RAW")
 
     return {"message": "Log saved to Google Sheets"}
